@@ -23,6 +23,14 @@ contract KeyCurator {
     event UserRegistered(uint256 registeredUsers);
 
     /**
+     * @dev Set up the RBE system
+     * @param setup_crs common reference string (punctured powers of tau)
+     */
+    function setup(AltBn128.G1Point[2 * BUCKET_SIZE - 1] calldata setup_crs) public {
+        crs = setup_crs;
+    }
+
+    /**
      * @dev Register a user in the RBE system
      * @param id registering user's identity string
      * @param pk registering user's public key
@@ -31,12 +39,44 @@ contract KeyCurator {
     function register(uint256 id, AltBn128.G1Point calldata pk, AltBn128.G1Point[] calldata helping_values) public {
         require(helping_values.length == BUCKET_SIZE - 1);
         require(id >= 0 && id < SYSTEM_CAPACITY); // TODO allow id to be a bytes32 and map it to a uint
+        uint256 id_bar = id % BUCKET_SIZE;
 
-        // TODO check helping_values
+        // TODO check helping_values - need multipairing in *symmetric* group, precompile is for asymmetric
         // e(pk, crs[n-1]) = e(a[n-1], g) = e(a[n-2], crs[0]) = ... = e(a[0], crs[n-2])
+        // TODO actually check the following:
+        // multipairing(a1^r1, b1, a2^(r2-r1), b2, ..., ak^(rk-r(k-1)), bk)
+        bytes memory payload = new bytes(BUCKET_SIZE);
+        bytes32 pk_bytes = AltBn128.g1Compress(pk);
+        bytes32 crs_last_bytes = AltBn128.g1Compress((crs[BUCKET_SIZE - 1]));
+        assembly {
+            mstore(add(payload, 32), pk_bytes)
+            mstore(add(payload, 64), crs_last_bytes)
+        }
+        bytes32 a_last_bytes = AltBn128.g1Compress(helping_values[BUCKET_SIZE - 1]);
+        bytes32 g_bytes = AltBn128.g1Compress(AltBn128.g1());
+        assembly {
+            mstore(add(payload, 96), a_last_bytes)
+            mstore(add(payload, 128), g_bytes)
+        }
+        for (uint256 i = 0; i < BUCKET_SIZE - 1; i++) {
+            uint256 j = BUCKET_SIZE - 2 - i;
+            if (j == id_bar) j--;
+            if (i == id_bar) i++;
+
+            bytes32 a_bytes = AltBn128.g1Compress(helping_values[j]);
+            bytes32 crs_bytes = AltBn128.g1Compress(crs[i]);
+            assembly {
+                mstore(add(payload, 96), a_bytes)
+                mstore(add(payload, 128), crs_bytes)
+            }
+        }
+        if (!AltBn128.multipairing(payload)) {
+            return;
+        }
 
         // update public parameters
         if (pp[id].x == 0 && pp[id].y == 0) {
+            // if pp bucket uninitialized
             pp[id] = pk;
         } else {
             pp[id] = AltBn128.g1Add(pp[id], pk);

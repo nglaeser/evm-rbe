@@ -157,6 +157,27 @@ library AltBn128 {
         }
     }
 
+    function multipairing(bytes memory input) internal view returns (bool result) {
+        // input is a serialized bytes stream of (a1, b1, a2, b2, ..., ak, bk) from (G_1 x G_2)^k
+        uint256 len = input.length;
+        require(len % 192 == 0);
+        uint256 _c;
+        assembly {
+            let c := mload(0x40)
+            if iszero(staticcall(not(0), 0x08, add(input, 0x20), len, c, 0x20)) { revert(0, 0) }
+            _c := mload(c)
+
+            // let success := call(gas(), 0x08, 0, add(input, 0x20), len, c, 0x20)
+            // switch success
+            // case 0 {
+            //     revert(0,0)
+            // } default {
+            //     result := mload(memPtr)
+            // }
+        }
+        return _c != 0;
+    }
+
     /// @dev Wraps the pairing check pre-compile introduced in Byzantium.
     ///      Returns the result of a pairing check of 2 pairs
     ///      (G1 p1, G2 p2) (G1 p3, G2 p4)
