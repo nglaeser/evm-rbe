@@ -3,6 +3,7 @@ use ark_bn254::g2::{G2_GENERATOR_X, G2_GENERATOR_Y};
 use ark_bn254::{Fr, G1Affine, G1Projective as G1, G2Affine, G2Projective as G2};
 use ark_std::UniformRand;
 use rand::thread_rng;
+use std::convert::Into;
 
 // get G1 generator
 pub fn g1_generator() -> G1 {

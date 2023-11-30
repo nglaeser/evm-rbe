@@ -2,7 +2,7 @@
 
 pragma solidity >=0.8.16;
 
-import "../lib/ec-crypto/AltBn128.sol";
+import "./lib/ec-crypto/AltBn128.sol";
 
 /**
  * @title KeyCurator
@@ -10,27 +10,51 @@ import "../lib/ec-crypto/AltBn128.sol";
  */
 contract KeyCurator {
     uint256 number;
-    uint256 public constant SYSTEM_CAPACITY = 600000;
-    uint256 public constant NUM_BUCKETS = 775;
-    uint256 public constant BUCKET_SIZE = 775;
+    // uint256 public constant SYSTEM_CAPACITY = 600000;
+    // uint256 public constant NUM_BUCKETS = 775;
+    // uint256 public constant BUCKET_SIZE = 775;
+    uint public system_capacity;
+    uint public num_buckets;
+    uint public bucket_size;
 
     uint256 public registeredUsers = 0;
 
     // storage
-    AltBn128.G1Point[NUM_BUCKETS] public pp;
-    AltBn128.G1Point[2 * BUCKET_SIZE - 1] public crs;
+    // AltBn128.G1Point[NUM_BUCKETS] public pp;
+    // AltBn128.G1Point[2 * BUCKET_SIZE - 1] public crs1;
+    AltBn128.G1Point[] public pp;
+    AltBn128.G1Point[] public crs1;
+    AltBn128.G2Point[] public crs2;
 
     event UserRegistered(uint256 registeredUsers);
 
     /**
-     * @dev Set up the RBE system
-     * @param setup_crs common reference string (punctured powers of tau)
+     * @dev Set up the RBE system (asymmetric)
+     * @param crs1_bytes common reference string (punctured powers of tau) in G1
+     * @param crs2_bytes copy of crs1 in G2
      */
-    function setup(
-        AltBn128.G1Point[2 * BUCKET_SIZE - 1] calldata setup_crs
-    ) public {
-        crs = setup_crs;
+    constructor(uint N, bytes[] memory crs1_bytes, bytes[] memory crs2_bytes) {
+        require(crs1.length == crs2.length);
+        // crs1.length = 2 * num_buckets - 1
+        num_buckets = (crs1.length + 1) / 2;
+        system_capacity = N;
+        bucket_size = uint(system_capacity / num_buckets);
+
+        uint256 i;
+        for (i = 0; i < crs1.length; ++i) {
+            crs1.push(AltBn128.g1Unmarshal(crs1_bytes[i]));
+            crs2.push(AltBn128.g2Unmarshal(crs2_bytes[i]));
+        }
     }
+
+    // function setup(
+    //     AltBn128.G1Point[2 * BUCKET_SIZE - 1] calldata setup_crs
+    // ) public {
+    //     uint256 i;
+    //     for (i = 0; i < 2 * BUCKET_SIZE - 1; ++i) {
+    //         crs[i] = setup_crs[i];
+    //     }
+    // }
 
     /**
      * @dev Register a user in the RBE system
@@ -43,9 +67,9 @@ contract KeyCurator {
         AltBn128.G1Point calldata pk,
         AltBn128.G1Point[] calldata helping_values
     ) public {
-        require(helping_values.length == BUCKET_SIZE - 1);
-        require(id >= 0 && id < SYSTEM_CAPACITY); // TODO allow id to be a bytes32 and map it to a uint
-        uint256 id_bar = id % BUCKET_SIZE;
+        require(helping_values.length == bucket_size - 1);
+        require(id >= 0 && id < system_capacity); // TODO allow id to be a bytes32 and map it to a uint
+        uint256 id_bar = id % bucket_size;
 
         /***** pairing check *****
          * check helping_values with pairing check:
@@ -55,28 +79,34 @@ contract KeyCurator {
         // precompile for asymmetric multipairing check:
         // multipairing(a1^r1, b1, a2^(r2-r1), b2, ..., ak^(rk-r(k-1)), bk)
         // TODO multipairing in *symmetric* group would be more efficient but no precompile
-        bytes memory payload = new bytes(BUCKET_SIZE);
+        bytes memory payload = new bytes(bucket_size);
         bytes32 pk_bytes = AltBn128.g1Compress(pk);
-        bytes32 crs_last_bytes = AltBn128.g1Compress((crs[BUCKET_SIZE - 1]));
+        // TODO
+        // bytes32 crs_last_bytes = AltBn128.g2Compress((crs2[bucket_size - 1]));
+        bytes32 crs_last_bytes;
         assembly {
             mstore(add(payload, 32), pk_bytes)
             mstore(add(payload, 64), crs_last_bytes)
         }
         bytes32 a_last_bytes = AltBn128.g1Compress(
-            helping_values[BUCKET_SIZE - 1]
+            helping_values[bucket_size - 1]
         );
-        bytes32 g_bytes = AltBn128.g1Compress(AltBn128.g1());
+        // TODO
+        // bytes32 g_bytes = AltBn128.g2Compress(AltBn128.g2());
+        bytes32 g_bytes;
         assembly {
             mstore(add(payload, 96), a_last_bytes)
             mstore(add(payload, 128), g_bytes)
         }
-        for (uint256 i = 0; i < BUCKET_SIZE - 1; i++) {
-            uint256 j = BUCKET_SIZE - 2 - i;
+        for (uint256 i = 0; i < bucket_size - 1; i++) {
+            uint256 j = bucket_size - 2 - i;
             if (j == id_bar) j--;
             if (i == id_bar) i++;
 
             bytes32 a_bytes = AltBn128.g1Compress(helping_values[j]);
-            bytes32 crs_bytes = AltBn128.g1Compress(crs[i]);
+            // TODO
+            // bytes32 crs_bytes = AltBn128.g2Compress(crs2[i]);
+            bytes32 crs_bytes;
             assembly {
                 mstore(add(payload, 96), a_bytes)
                 mstore(add(payload, 128), crs_bytes)

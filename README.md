@@ -6,7 +6,16 @@ The core smart contract implementing the Key Curator is in `contracts/KeyCurator
 
 The remainder of the system is run off-chain in Rust, with computations implemented in `src/` and tested in `tests/`.
 
+## Dependencies
+
+- [Solc](https://docs.soliditylang.org/en/latest/installing-solidity.html)
+- Anvil
+
 ## Usage
+
+- Build: `cargo build`
+  - This also compiles the contracts
+- Test: `cargo test`
 
 ## Credits
 

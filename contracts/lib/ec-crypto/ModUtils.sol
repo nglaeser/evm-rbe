@@ -11,12 +11,16 @@
 // ▓▓▓▓▓▓▓▓▓▓ ▓▓▓▓▓▓▓▓▓▓ ▐▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓ ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓  ▓▓▓▓▓▓▓▓▓▓
 //
 //
-pragma solidity 0.8.16;
+pragma solidity >=0.8.16;
 
 library ModUtils {
     /// @dev Wraps the modular exponent pre-compile introduced in Byzantium.
     ///      Returns base^exponent mod p.
-    function modExp(uint256 base, uint256 exponent, uint256 p) internal view returns (uint256 o) {
+    function modExp(
+        uint256 base,
+        uint256 exponent,
+        uint256 p
+    ) internal view returns (uint256 o) {
         assembly {
             // Args for the precompile: [<length_of_BASE> <length_of_EXPONENT>
             // <length_of_MODULUS> <BASE> <EXPONENT> <MODULUS>]
@@ -30,7 +34,9 @@ library ModUtils {
             mstore(add(args, 0xa0), p)
 
             // 0x05 is the modular exponent contract address
-            if iszero(staticcall(not(0), 0x05, args, 0xc0, output, 0x20)) { revert(0, 0) }
+            if iszero(staticcall(not(0), 0x05, args, 0xc0, output, 0x20)) {
+                revert(0, 0)
+            }
             o := mload(output)
         }
     }
