@@ -112,7 +112,7 @@ pub fn enc(params: Params, crs: &CRS, pp: Vec<G1>, id: usize, m: GT<Bn254>) -> C
 }
 
 // Fetch updates since blocknum from chain
-pub fn update(blocknum: usize, id: usize) -> Vec<G1> {
+pub fn get_updates(blocknum: usize, id: usize) -> Vec<G1> {
     // TODO
     vec![]
 }

@@ -1,7 +1,5 @@
-use ethers::prelude::{
-    abigen,
-    contract::{Contract, EthEvent},
-};
+use ethers::prelude::{abigen, Contract, EthEvent, Filter, Http, Middleware, Provider, H160, U256};
+use std::sync::Arc;
 
 abigen!(KC, "contracts/out/KeyCurator.sol/KeyCurator.json",);
 
@@ -15,9 +13,9 @@ pub async fn query_new_aux_values(provider: &Provider<Http>, contract_address: H
 
     let filter = Filter::new().address(contract_address);
 
-    let mut logs = client.get_logs(&filter).await?;
+    let mut logs = client.get_logs(&filter).await;
     println!("{} new registrations", logs.iter().len());
     for log in logs.iter() {
-        println!(log);
+        println!("{:?}", log);
     }
 }
