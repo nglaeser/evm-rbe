@@ -57,6 +57,19 @@ pub async fn query_new_aux_values(
     }
 }
 
+pub async fn get_deployment_events(provider: &Provider<Http>, contract_address: H160) {
+    let client = Arc::new(provider);
+
+    let filter = Filter::new()
+        .address(contract_address)
+        .event("ContractDeployed(uint,uint,uint)");
+
+    let mut logs = client.get_logs(&filter).await;
+    for log in logs.iter() {
+        println!("{:?}", log);
+    }
+}
+
 /***** copied from https://github.com/a16z/evm-powers-of-tau *****/
 #[derive(Copy, Clone, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 struct QueryError;

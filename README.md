@@ -13,9 +13,12 @@ The remainder of the system is run off-chain in Rust, with computations implemen
 
 ## Usage
 
+- Install: `forge install`
 - Build: `cargo build`
-  - This also compiles the contracts
-- Test: `cargo test`
+  - This also compiles the contracts to JSON
+- Test: 
+  - Solidity tests: `forge test`
+  - Rust tests: `cargo test`
 
 ## Credits
 
