@@ -1,9 +1,11 @@
 use ark_bn254::g1::{G1_GENERATOR_X, G1_GENERATOR_Y};
 use ark_bn254::g2::{G2_GENERATOR_X, G2_GENERATOR_Y};
-use ark_bn254::{Fr, G1Affine, G1Projective as G1, G2Affine, G2Projective as G2};
-use ark_ec::{short_weierstrass::Projective, CurveGroup};
+use ark_bn254::{Fq, Fr, G1Affine, G1Projective as G1, G2Affine, G2Projective as G2};
+use ark_ec::{short_weierstrass::Projective, AffineRepr, CurveGroup};
+use ark_ff::PrimeField;
 use ark_serialize::CanonicalSerialize;
 use ark_std::UniformRand;
+use ethers::prelude::*;
 use rand::thread_rng;
 use std::convert::Into;
 
@@ -53,4 +55,22 @@ impl<P: ark_ec::short_weierstrass::SWCurveConfig> IntoBytes for Projective<P> {
     fn into_bytes(self) -> ethers::prelude::Bytes {
         ethers::prelude::Bytes::from(self.serialize())
     }
+}
+
+pub fn contract_bytes_to_g1(b: &Bytes) -> G1 {
+    assert!(b.len() == 64);
+    let mut x_b = Vec::with_capacity(32);
+    let mut y_b = Vec::with_capacity(32);
+
+    for i in 0..32 {
+        x_b.push(b.get(i).unwrap().clone());
+    }
+    for i in 32..64 {
+        y_b.push(b.get(i).unwrap().clone());
+    }
+    let x = Fq::from_be_bytes_mod_order(x_b.as_slice());
+    let y = Fq::from_be_bytes_mod_order(y_b.as_slice());
+
+    // return projective representation
+    G1Affine::new(x, y).into_group()
 }

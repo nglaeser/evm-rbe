@@ -16,15 +16,42 @@ abigen!(KC, "contracts/out/KeyCurator.sol/KeyCurator.json",);
 
 #[tokio::test(flavor = "multi_thread")]
 async fn primary() {
-    let (contract, anvil, (capacity, init_crs1, init_crs2)) = launch_integration().await;
-    // TODO continue...
+    /*** deploy contract (setup) ***/
+    let (contract, anvil, (sysparams, crs)) = launch_integration().await;
+
+    /*** Register party 1 (id = 5) ***/
+    let id: U256 = U256::from(5);
+
+    // keygen
+    let (pk, sk, a) = rbe_asym::gen(sysparams, &crs, 5).unwrap();
+    let a_serial: Vec<Bytes> = a.iter().map(|item| item.into_bytes()).collect();
+
+    // call contract
+    let tx = contract.register(id, pk.into_bytes(), a_serial);
+    let pending_tx = tx.send().await;
+    // Unwrap will panic if tx reverts
+    let wait = pending_tx.unwrap().await;
+    let receipt = wait.unwrap().unwrap();
+    assert_eq!(receipt.status.unwrap().as_usize(), 1);
+    println!("Update 1 gas usage: {}gwei", receipt.cumulative_gas_used);
+
+    /*** check contract storage updated correctly ***/
+    let provider = Provider::<Http>::try_from(anvil.endpoint())
+        .expect("Failed to create provider")
+        .interval(Duration::from_millis(10u64));
+    let query_result = query::query_new_aux_values(&provider, contract.address(), 1).await;
+    let queried_aux: Vec<G1> = query_result.unwrap();
+    assert_eq!(queried_aux, a);
+
+    // Clean
+    drop(anvil);
 }
 
 /***** copied from https://github.com/a16z/evm-powers-of-tau *****/
 async fn launch_integration() -> (
     kc::KC<SignerMiddleware<ethers::providers::Provider<ethers::providers::Http>, LocalWallet>>,
     AnvilInstance,
-    (usize, Vec<G1>, Vec<G2>),
+    (rbe_asym::Params, rbe_asym::CRS),
 ) {
     let anvil = Anvil::new().spawn();
     let wallet: LocalWallet = anvil.keys()[0].clone().into();
@@ -54,6 +81,6 @@ async fn launch_integration() -> (
             .await
             .unwrap(),
         anvil,
-        (sysparams.capacity, crs.crs1, crs.crs2),
+        (sysparams, crs),
     )
 }
