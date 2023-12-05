@@ -67,11 +67,22 @@ async fn launch_integration() -> (
 
     let init_crs1_serial: Vec<Bytes> = crs.crs1.iter().map(|item| item.into_bytes()).collect();
     let init_crs2_serial: Vec<Bytes> = crs.crs2.iter().map(|item| item.into_bytes()).collect();
+    assert!(init_crs1_serial.len() == init_crs2_serial.len());
+    println!("CRS1 length: {}", init_crs1_serial.len());
 
-    let constructor_params: (u32, Vec<Bytes>, Vec<Bytes>) = (
-        sysparams.capacity as u32,
+    let constructor_params: (U256, Vec<Bytes>, Vec<Bytes>) = (
+        U256::from(sysparams.capacity),
         init_crs1_serial,
         init_crs2_serial,
+    );
+    let deploy_result = KC::deploy(client.clone(), constructor_params.clone());
+    // query::get_deployment_events(&provider, deploy_result.unwrap().address()).await;
+    println!(
+        "{:?}",
+        deploy_result.unwrap() // .legacy()
+                               // .send_with_receipt()
+                               // .await
+                               // .unwrap_err()
     );
     (
         KC::deploy(client, constructor_params)

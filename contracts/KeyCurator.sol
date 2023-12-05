@@ -3,19 +3,19 @@
 pragma solidity >=0.8.16;
 
 import "./lib/ec-crypto/AltBn128.sol";
+import "forge-std/console2.sol";
 
 /**
  * @title KeyCurator
  * @dev Run Key Curator of [GKMR18] RBE construction
  */
 contract KeyCurator {
-    uint256 number;
     // uint256 public constant SYSTEM_CAPACITY = 600000;
     // uint256 public constant NUM_BUCKETS = 775;
     // uint256 public constant BUCKET_SIZE = 775;
-    uint public system_capacity;
-    uint public num_buckets;
-    uint public bucket_size;
+    uint256 public system_capacity;
+    uint256 public num_buckets;
+    uint256 public bucket_size;
 
     uint256 public registeredUsers = 0;
 
@@ -27,24 +27,71 @@ contract KeyCurator {
     AltBn128.G2Point[] public crs2;
 
     event UserRegistered(uint256 registeredUsers);
+    event ContractDeployed(
+        uint system_capacity,
+        uint num_buckets,
+        uint bucket_size
+    );
 
     /**
      * @dev Set up the RBE system (asymmetric)
+     * @param _system_capacity maximum number of users who can register
      * @param crs1_bytes common reference string (punctured powers of tau) in G1
      * @param crs2_bytes copy of crs1 in G2
      */
-    constructor(uint N, bytes[] memory crs1_bytes, bytes[] memory crs2_bytes) {
-        require(crs1.length == crs2.length);
-        // crs1.length = 2 * num_buckets - 1
-        num_buckets = (crs1.length + 1) / 2;
-        system_capacity = N;
-        bucket_size = uint(system_capacity / num_buckets);
+    constructor(
+        uint256 _system_capacity,
+        bytes[] memory crs1_bytes,
+        bytes[] memory crs2_bytes
+    ) {
+        require(crs1_bytes.length == crs2_bytes.length);
+        require(crs1_bytes.length > 0);
+        // crs1 = new AltBn128.G1Point[](crs1_bytes.length);
+        // crs2 = new AltBn128.G2Point[](crs2_bytes.length);
+        // crs1.length will be (2 * num_buckets - 1)
+        num_buckets = (crs1_bytes.length + 1) / 2;
+        // console2.log("crs1 length:", crs1_bytes.length);
+        // console2.log("num_buckets:", num_buckets);
+        assert(num_buckets != 0);
+        system_capacity = _system_capacity;
+        bucket_size = system_capacity / num_buckets;
+        // emit ContractDeployed(system_capacity, num_buckets, bucket_size);
 
         uint256 i;
-        for (i = 0; i < crs1.length; ++i) {
+        for (i = 0; i < crs1_bytes.length; i++) {
             crs1.push(AltBn128.g1Unmarshal(crs1_bytes[i]));
             crs2.push(AltBn128.g2Unmarshal(crs2_bytes[i]));
         }
+        // console2.log("crs1 length: ", crs1.length);
+        // console2.log("crs2 length: ", crs2.length);
+    }
+
+    function getSystemCapacity() public view returns (uint) {
+        return system_capacity;
+    }
+
+    function getNumBuckets() public view returns (uint) {
+        return num_buckets;
+    }
+
+    function getBucketSize() public view returns (uint) {
+        return bucket_size;
+    }
+
+    function getRegisteredUsers() public view returns (uint) {
+        return registeredUsers;
+    }
+
+    function getPP() public view returns (AltBn128.G1Point[] memory) {
+        return pp;
+    }
+
+    function getCrs1() public view returns (AltBn128.G1Point[] memory) {
+        return crs1;
+    }
+
+    function getCrs2() public view returns (AltBn128.G2Point[] memory) {
+        return crs2;
     }
 
     /**
