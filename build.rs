@@ -11,7 +11,13 @@ fn main() {
         .sources(&root)
         .build()
         .unwrap();
-    let mut project = Project::builder().paths(paths).ephemeral().build().unwrap();
+    // let mut project = Project::builder().paths(paths).ephemeral().build().unwrap();
+    let mut project = Project::builder()
+        .paths(paths)
+        .ephemeral()
+        .no_artifacts()
+        .build()
+        .unwrap();
     project.solc_config.settings.optimizer.enable();
     project.solc_config.settings.optimizer.runs(200);
     project.compile().unwrap();

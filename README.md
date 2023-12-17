@@ -9,7 +9,7 @@ The remainder of the system is run off-chain in Rust, with computations implemen
 ## Dependencies
 
 - [Solc](https://docs.soliditylang.org/en/latest/installing-solidity.html)
-- Anvil
+- [Foundry](https://book.getfoundry.sh/getting-started/installation) (includes Anvil)
 
 ## Usage
 

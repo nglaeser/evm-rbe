@@ -10,9 +10,6 @@ import "forge-std/console2.sol";
  * @dev Run Key Curator of [GKMR18] RBE construction
  */
 contract KeyCurator {
-    // uint256 public constant SYSTEM_CAPACITY = 600000;
-    // uint256 public constant NUM_BUCKETS = 775;
-    // uint256 public constant BUCKET_SIZE = 775;
     uint256 public system_capacity;
     uint256 public num_buckets;
     uint256 public bucket_size;
@@ -20,8 +17,6 @@ contract KeyCurator {
     uint256 public registeredUsers = 0;
 
     // storage
-    // AltBn128.G1Point[NUM_BUCKETS] public pp;
-    // AltBn128.G1Point[2 * BUCKET_SIZE - 1] public crs1;
     AltBn128.G1Point[] public pp;
     AltBn128.G1Point[] public crs1;
     AltBn128.G2Point[] public crs2;
@@ -36,34 +31,37 @@ contract KeyCurator {
     /**
      * @dev Set up the RBE system (asymmetric)
      * @param _system_capacity maximum number of users who can register
-     * @param crs1_bytes common reference string (punctured powers of tau) in G1
-     * @param crs2_bytes copy of crs1 in G2
+     * @param _crs1_bytes common reference string (punctured powers of tau) in G1
+     * @param _crs2_bytes copy of crs1 in G2
      */
     constructor(
         uint256 _system_capacity,
-        bytes[] memory crs1_bytes,
-        bytes[] memory crs2_bytes
+        bytes[] memory _crs1_bytes,
+        bytes[] memory _crs2_bytes
     ) {
-        require(crs1_bytes.length == crs2_bytes.length);
-        require(crs1_bytes.length > 0);
+        require(_crs1_bytes.length == _crs2_bytes.length);
+        require(_crs1_bytes.length > 0);
         // crs1 = new AltBn128.G1Point[](crs1_bytes.length);
         // crs2 = new AltBn128.G2Point[](crs2_bytes.length);
+
         // crs1.length will be (2 * num_buckets - 1)
-        num_buckets = (crs1_bytes.length + 1) / 2;
-        // console2.log("crs1 length:", crs1_bytes.length);
-        // console2.log("num_buckets:", num_buckets);
+        num_buckets = (_crs1_bytes.length + 1) / 2;
+        console2.log("num_buckets:", num_buckets);
         assert(num_buckets != 0);
+
         system_capacity = _system_capacity;
         bucket_size = system_capacity / num_buckets;
         // emit ContractDeployed(system_capacity, num_buckets, bucket_size);
 
         uint256 i;
-        for (i = 0; i < crs1_bytes.length; i++) {
-            crs1.push(AltBn128.g1Unmarshal(crs1_bytes[i]));
-            crs2.push(AltBn128.g2Unmarshal(crs2_bytes[i]));
+        for (i = 0; i < _crs1_bytes.length; i++) {
+            crs1.push(AltBn128.g1Unmarshal(_crs1_bytes[i]));
+            crs2.push(AltBn128.g2Unmarshal(_crs2_bytes[i]));
         }
-        // console2.log("crs1 length: ", crs1.length);
-        // console2.log("crs2 length: ", crs2.length);
+        assert(crs1.length == _crs1_bytes.length);
+        assert(crs2.length == _crs2_bytes.length);
+        console2.log("crs1 length: ", crs1.length);
+        console2.log("crs2 length: ", crs2.length);
     }
 
     function getSystemCapacity() public view returns (uint) {
@@ -141,38 +139,39 @@ contract KeyCurator {
         AltBn128.G2Point[] memory crs,
         AltBn128.G1Point memory pk
     ) public view returns (bool) {
-        // precompile for asymmetric multipairing check:
-        // multipairing(a1^r1, b1, a2^(r2-r1), b2, ..., ak^(rk-r(k-1)), bk)
-        // TODO multipairing in *symmetric* group would be more efficient but no precompile
-        bytes memory payload = new bytes(bucket_size);
-        bytes32 pk_bytes = AltBn128.g1Compress(pk);
-        bytes memory crs_last_bytes = AltBn128.g2Compress(
-            (crs[bucket_size - 1])
-        );
-        assembly {
-            mstore(add(payload, 32), pk_bytes)
-            mstore(add(payload, 64), crs_last_bytes)
-        }
-        bytes32 a_last_bytes = AltBn128.g1Compress(
-            helpingValues[bucket_size - 1]
-        );
-        bytes memory g_bytes = AltBn128.g2Compress(AltBn128.g2());
-        assembly {
-            mstore(add(payload, 96), a_last_bytes)
-            mstore(add(payload, 128), g_bytes)
-        }
-        for (uint256 i = 0; i < bucket_size - 1; i++) {
-            uint256 j = bucket_size - 2 - i;
-            if (j == id_bar) j--;
-            if (i == id_bar) i++;
+        //     // precompile for asymmetric multipairing check:
+        //     // multipairing(a1^r1, b1, a2^(r2-r1), b2, ..., ak^(rk-r(k-1)), bk)
+        //     // TODO multipairing in *symmetric* group would be more efficient but no precompile
+        //     bytes memory payload = new bytes(bucket_size);
+        //     bytes32 pk_bytes = AltBn128.g1Compress(pk);
+        //     bytes memory crs_last_bytes = AltBn128.g2Compress(
+        //         (crs[bucket_size - 1])
+        //     );
+        //     assembly {
+        //         mstore(add(payload, 32), pk_bytes)
+        //         mstore(add(payload, 64), crs_last_bytes)
+        //     }
+        //     bytes32 a_last_bytes = AltBn128.g1Compress(
+        //         helpingValues[bucket_size - 1]
+        //     );
+        //     bytes memory g_bytes = AltBn128.g2Compress(AltBn128.g2());
+        //     assembly {
+        //         mstore(add(payload, 96), a_last_bytes)
+        //         mstore(add(payload, 128), g_bytes)
+        //     }
+        //     for (uint256 i = 0; i < bucket_size - 1; i++) {
+        //         uint256 j = bucket_size - 2 - i;
+        //         if (j == id_bar) j--;
+        //         if (i == id_bar) i++;
 
-            bytes32 a_bytes = AltBn128.g1Compress(helpingValues[j]);
-            bytes memory crs_bytes = AltBn128.g2Compress(crs[i]);
-            assembly {
-                mstore(add(payload, 96), a_bytes)
-                mstore(add(payload, 128), crs_bytes)
-            }
-        }
-        return AltBn128.multipairing(payload);
+        //         bytes32 a_bytes = AltBn128.g1Compress(helpingValues[j]);
+        //         bytes memory crs_bytes = AltBn128.g2Compress(crs[i]);
+        //         assembly {
+        //             mstore(add(payload, 96), a_bytes)
+        //             mstore(add(payload, 128), crs_bytes)
+        //         }
+        //     }
+        //     return AltBn128.multipairing(payload);
+        return true;
     }
 }

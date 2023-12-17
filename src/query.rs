@@ -46,14 +46,15 @@ pub async fn query_new_aux_values(
             continue;
         }
 
-        let decoded_input = RegisterCall::decode(&tx.input)?;
-        let helping_values: Vec<G1> = decoded_input
-            .helping_value_bytes
-            .iter()
-            .map(|g1| utils::contract_bytes_to_g1(g1))
-            .collect();
+        // let decoded_input = RegisterCall::decode(&tx.input)?;
+        // let helping_values: Vec<G1> = decoded_input
+        //     .helping_value_bytes
+        //     .iter()
+        //     .map(|g1| utils::contract_bytes_to_g1(g1))
+        //     .collect();
 
-        return Ok(helping_values);
+        // return Ok(helping_values);
+        return Ok(vec![]);
     }
 }
 

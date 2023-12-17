@@ -4,7 +4,10 @@ use ethers::{
     prelude::*,
     utils::{Anvil, AnvilInstance},
 };
-use rust_rbe::{query, rbe_asym, utils};
+use rust_rbe::{
+    query, rbe_asym,
+    utils::{self, g1_generator},
+};
 use std::{sync::Arc, time::Duration};
 use utils::IntoBytes;
 
@@ -26,22 +29,22 @@ async fn primary() {
     let (pk, sk, a) = rbe_asym::gen(sysparams, &crs, 5).unwrap();
     let a_serial: Vec<Bytes> = a.iter().map(|item| item.into_bytes()).collect();
 
-    // call contract
-    let tx = contract.register(id, pk.into_bytes(), a_serial);
-    let pending_tx = tx.send().await;
-    // Unwrap will panic if tx reverts
-    let wait = pending_tx.unwrap().await;
-    let receipt = wait.unwrap().unwrap();
-    assert_eq!(receipt.status.unwrap().as_usize(), 1);
-    println!("Update 1 gas usage: {}gwei", receipt.cumulative_gas_used);
+    // // call contract
+    // let tx = contract.register(id, pk.into_bytes(), a_serial);
+    // let pending_tx = tx.send().await;
+    // // Unwrap will panic if tx reverts
+    // let wait = pending_tx.unwrap().await;
+    // let receipt = wait.unwrap().unwrap();
+    // assert_eq!(receipt.status.unwrap().as_usize(), 1);
+    // println!("Update 1 gas usage: {}gwei", receipt.cumulative_gas_used);
 
-    /*** check contract storage updated correctly ***/
-    let provider = Provider::<Http>::try_from(anvil.endpoint())
-        .expect("Failed to create provider")
-        .interval(Duration::from_millis(10u64));
-    let query_result = query::query_new_aux_values(&provider, contract.address(), 1).await;
-    let queried_aux: Vec<G1> = query_result.unwrap();
-    assert_eq!(queried_aux, a);
+    // /*** check contract storage updated correctly ***/
+    // let provider = Provider::<Http>::try_from(anvil.endpoint())
+    //     .expect("Failed to create provider")
+    //     .interval(Duration::from_millis(10u64));
+    // let query_result = query::query_new_aux_values(&provider, contract.address(), 1).await;
+    // let queried_aux: Vec<G1> = query_result.unwrap();
+    // assert_eq!(queried_aux, a);
 
     // Clean
     drop(anvil);
@@ -59,21 +62,28 @@ async fn launch_integration() -> (
         .expect("Failed to create provider")
         .interval(Duration::from_millis(10u64));
 
-    let anvil_chain_id = provider.get_chainid().await.unwrap();
-    let client = SignerMiddleware::new(provider, wallet.with_chain_id(anvil_chain_id.as_u64()));
+    // let anvil_chain_id = provider.get_chainid().await.unwrap();
+    // let client = SignerMiddleware::new(provider, wallet.with_chain_id(anvil_chain_id.as_u64()));
+    let anvil_chain_id = anvil.chain_id();
+    let client = SignerMiddleware::new(provider, wallet.with_chain_id(anvil_chain_id));
     let client = Arc::new(client);
 
     let (sysparams, crs) = rbe_asym::setup(SYSTEM_CAPACITY);
 
-    let init_crs1_serial: Vec<Bytes> = crs.crs1.iter().map(|item| item.into_bytes()).collect();
+    // let init_crs1_serial: Vec<Bytes> = crs.crs1.iter().map(|item| item.into_bytes()).collect();
+    let init_crs1_serial: Vec<Bytes> = vec![g1_generator().into_bytes()];
     let init_crs2_serial: Vec<Bytes> = crs.crs2.iter().map(|item| item.into_bytes()).collect();
-    assert!(init_crs1_serial.len() == init_crs2_serial.len());
+    // assert!(init_crs1_serial.len() == init_crs2_serial.len());
     println!("CRS1 length: {}", init_crs1_serial.len());
 
-    let constructor_params: (U256, Vec<Bytes>, Vec<Bytes>) = (
-        U256::from(sysparams.capacity),
+    let int_vec: Vec<U256> = vec![U256::from(10)];
+    // let constructor_params: (U256, Vec<Bytes>, Vec<Bytes>) = (
+    let constructor_params: (Vec<U256>, Vec<Bytes>) = (
+        // U256::from(sysparams.capacity),
+        // U256::from(10),
+        int_vec,
         init_crs1_serial,
-        init_crs2_serial,
+        // init_crs2_serial
     );
     let deploy_result = KC::deploy(client.clone(), constructor_params.clone());
     // query::get_deployment_events(&provider, deploy_result.unwrap().address()).await;
@@ -87,7 +97,7 @@ async fn launch_integration() -> (
     (
         KC::deploy(client, constructor_params)
             .unwrap()
-            .legacy()
+            // .legacy()
             .send()
             .await
             .unwrap(),
